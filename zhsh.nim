@@ -1,23 +1,37 @@
+## This module is a port of the Java implementation of the Zhang-Shasha
+## algorithm for tree edit distance (found here:
+## https://github.com/ijkilchenko/ZhangShasha). It supports the simple
+## string based language for creating trees that the original supports and
+## allows the user to create their own trees for comparisson.
+
 import strutils
 import sequtils
 import math
 
 type
   Node* = ref object
+    ## Nodes contains the label used to describe the node,
+    ## along with a sequence of child nodes
     label*: string
     index: int
     children*: seq[Node]
     leftmost: Node
   Tree* = ref object
+    ## The Tree type contains the root of a tree
     root*: Node
     l: seq[int]
     keyroots: seq[int]
     labels: seq[string]
-  Tokenizer = object
+  Tokenizer* = object
+    ## The Tokenizer is intended for parsing a simple tree syntax on the form:
+    ## "f(a g(h))" where f is the root, a and g are children of f and h is a
+    ## child of g
     tokens: seq[tuple[token: string, isSep: bool]]
     token: int
 
 proc `$`*(node: Node): string =
+  ## Basic string operator to output a node. Outputs a similar format to what
+  ## the tokenizer reads as input
   result = node.label
   if node.children.len != 0:
     result = result & "("
@@ -26,6 +40,7 @@ proc `$`*(node: Node): string =
     result = result & ")"
 
 proc tokenize*(str: string): Tokenizer =
+  ## Tokenize a string into a tokenizer for use in initializing a tree
   result.tokens = @[]
   for word in str.tokenize({'(',')',' '}):
     if word.isSep:
@@ -125,7 +140,10 @@ proc getkeyroots(tree: Tree) =
     if flag == 0:
       tree.keyroots.add(i + 1)
 
-proc zhangShasha*(tree1: Tree, tree2: Tree): int =
+proc zhangShasha*(tree1: Tree, tree2: Tree, delete = 1, insert = 1, relabel = 1): int =
+  ## The main procedure to calculate the edit distance between two trees.
+  ## Takes the two trees to compare along with three optional weights on what
+  ## to consider as change.
   tree1.l = @[]
   tree1.keyroots = @[]
   tree1.labels = @[]
@@ -147,10 +165,6 @@ proc zhangShasha*(tree1: Tree, tree2: Tree): int =
   proc treedist(l1, l2: seq[int], i, j: int, tree1, tree2: Tree): int =
     var
       forestdist = newSeqWith(l1.len + 1, newSeq[int](l2.len + 1))
-    const
-      delete = 1
-      insert = 1
-      relabel = 1
 
     forestdist[0][0] = 0
     for i1 in l1[i - 1]..i:

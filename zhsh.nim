@@ -55,7 +55,7 @@ proc tokenize*(str: string): Tokenizer =
 proc curToken(tokenizer: Tokenizer): tuple[token: string, isSep: bool] =
   tokenizer.tokens[tokenizer.token]
 
-template doWhile(a: expr, b: stmt): stmt =
+template doWhile(a, b: untyped): untyped =
   while true:
     b
     if not a:

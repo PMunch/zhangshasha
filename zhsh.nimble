@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.1.0"
+version       = "0.2.0"
 author        = "Peter Munch-Ellingsen"
 description   = "This module is a port of the Java implementation of the Zhang-Shasha algorithm for tree edit distance"
 license       = "MIT"

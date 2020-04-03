@@ -3,25 +3,27 @@
 ## https://github.com/ijkilchenko/ZhangShasha). It supports the simple
 ## string based language for creating trees that the original supports and
 ## allows the user to create their own trees for comparisson.
+##
+## It is also generic in nature, so the `label` of each `Node` could be any
+## type as long as `==` is defined for it (and `$` if you want to print it).
 
 import strutils
 import sequtils
-import math
 
 type
-  Node* = ref object
+  Node*[T] = ref object
     ## Nodes contains the label used to describe the node,
     ## along with a sequence of child nodes
-    label*: string
+    label*: T
     index: int
-    children*: seq[Node]
-    leftmost: Node
-  Tree* = ref object
+    children*: seq[Node[T]]
+    leftmost: Node[T]
+  Tree*[T] = ref object
     ## The Tree type contains the root of a tree
-    root*: Node
+    root*: Node[T]
     l: seq[int]
     keyroots: seq[int]
-    labels: seq[string]
+    labels: seq[T]
   Tokenizer* = object
     ## The Tokenizer is intended for parsing a simple tree syntax on the form:
     ## "f(a g(h))" where f is the root, a and g are children of f and h is a
@@ -29,10 +31,10 @@ type
     tokens: seq[tuple[token: string, isSep: bool]]
     token: int
 
-proc `$`*(node: Node): string =
+proc `$`*[T](node: Node[T]): string =
   ## Basic string operator to output a node. Outputs a similar format to what
   ## the tokenizer reads as input
-  result = node.label
+  result = $node.label
   if node.children.len != 0:
     result = result & "("
     for child in node.children:
@@ -61,7 +63,7 @@ template doWhile(a, b: untyped): untyped =
     if not a:
       break
 
-proc parseString(node: var Node, tokenizer: var Tokenizer): Node =
+proc parseString(node: var Node[string], tokenizer: var Tokenizer): Node[string] =
   node.label = tokenizer.curToken.token
   tokenizer.token += 1
   if tokenizer.token >= tokenizer.tokens.len:
@@ -70,7 +72,7 @@ proc parseString(node: var Node, tokenizer: var Tokenizer): Node =
     tokenizer.token += 1
     doWhile tokenizer.curToken.token != ")":
       if tokenizer.curToken.token != " ":
-        var newNode = new Node
+        var newNode = new Node[string]
         newNode.children = @[]
         node.children.add(parseString(newNode, tokenizer))
       else:
@@ -78,36 +80,35 @@ proc parseString(node: var Node, tokenizer: var Tokenizer): Node =
     tokenizer.token += 1
   return node
 
-proc initTree*(tokenizer: var Tokenizer): Tree =
-  result = Tree()
-  result.root = new Node
+proc initTree*(tokenizer: var Tokenizer): Tree[string] =
+  result = Tree[string]()
+  result.root = new Node[string]
   result.root.children = @[]
   result.root = parseString(result.root, tokenizer)
   if tokenizer.token != tokenizer.tokens.len:
     echo "Tokens not exhausted"
     quit 1
 
-proc traverse(node: Node, labels: var seq[string]): seq[string] =
+proc traverse[T](node: Node[T], labels: var seq[T]): seq[T] =
   for i in node.children:
     labels = traverse(i, labels)
   labels.add(node.label)
   return labels
 
-proc traverse(tree: Tree) =
+proc traverse[T](tree: Tree[T]) =
   discard traverse(tree.root, tree.labels)
 
-proc index(node: Node, index: var int): int =
+proc index[T](node: Node[T], idx: int): int =
+  result = idx
   for i in node.children:
-    index = index(i, index)
-  index += 1
-  node.index = index
-  return index
+    result = index(i, result)
+  result += 1
+  node.index = result
 
-proc index(tree: Tree) =
-  var i = 0
-  discard index(tree.root, i)
+proc index[T](tree: Tree[T]) =
+  discard index(tree.root, 0)
 
-proc leftmost(node: Node) =
+proc leftmost[T](node: Node[T]) =
   if node == nil:
     return
   for i in node.children:
@@ -117,21 +118,21 @@ proc leftmost(node: Node) =
   else:
     node.leftmost = node.children[0].leftmost
 
-proc leftmost(tree: Tree) =
+proc leftmost[T](tree: Tree[T]) =
   leftmost(tree.root)
 
-proc getl(node: Node, l: var seq[int]): seq[int] =
+proc getl[T](node: Node[T], l: var seq[int]): seq[int] =
   for i in node.children:
     l = getl(i, l)
   l.add(node.leftmost.index)
   return l
 
-proc getl(tree: Tree) =
+proc getl[T](tree: Tree[T]) =
   leftmost(tree)
   var tmpSeq = newSeq[int]()
   tree.l = getl(tree.root, tmpSeq)
 
-proc getkeyroots(tree: Tree) =
+proc getkeyroots[T](tree: Tree[T]) =
   for i in 0..<tree.l.len:
     var flag = 0
     for j in (i+1)..<tree.l.len:
@@ -140,7 +141,7 @@ proc getkeyroots(tree: Tree) =
     if flag == 0:
       tree.keyroots.add(i + 1)
 
-proc zhangShasha*(tree1: Tree, tree2: Tree, delete = 1, insert = 1, relabel = 1): int =
+proc zhangShasha*[T](tree1: Tree[T], tree2: Tree[T], delete = 1, insert = 1, relabel = 1): int =
   ## The main procedure to calculate the edit distance between two trees.
   ## Takes the two trees to compare along with three optional weights on what
   ## to consider as change.
@@ -162,7 +163,7 @@ proc zhangShasha*(tree1: Tree, tree2: Tree, delete = 1, insert = 1, relabel = 1)
 
   var td = newSeqWith(tree1.l.len + 1, newSeq[int](tree2.l.len + 1))
 
-  proc treedist(l1, l2: seq[int], i, j: int, tree1, tree2: Tree): int =
+  proc treedist(l1, l2: seq[int], i, j: int, tree1, tree2: Tree[T]): int =
     var
       forestdist = newSeqWith(l1.len + 1, newSeq[int](l2.len + 1))
 
